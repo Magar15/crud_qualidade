@@ -1,11 +1,151 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Livros</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 20px; }
+        input, button { width: 100%; padding: 10px; margin: 8px 0; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; }
+        .btn-salvar { background-color: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
+        .btn-salvar:hover { background-color: #218838; }
+        
+        .livro-card { background: #fff; border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 5px; width: 100%; max-width: 400px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; gap: 15px; }
+        .livro-capa { width: 80px; height: 120px; object-fit: cover; border-radius: 4px; background-color: #eee; }
+        .livro-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .livro-info h3 { margin: 0 0 5px 0; color: #333; font-size: 18px; }
+        .livro-info p { margin: 0; color: #666; font-size: 14px; margin-bottom: 10px; }
+        
+        .botoes-acao { display: flex; gap: 10px; }
+        .btn-editar { background-color: #ffc107; color: #000; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-weight: bold; width: 100%; }
+        .btn-apagar { background-color: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-weight: bold; width: 100%; }
+    </style>
 </head>
 <body>
-  
+
+    <div class="container">
+        <h2 id="titulo-form">Adicionar Novo Livro</h2>
+        <input type="text" id="titulo" placeholder="Título do Livro" required>
+        <input type="text" id="autor" placeholder="Autor" required>
+        <input type="url" id="urlImagem" placeholder="Link da imagem da capa (opcional)">
+        
+        <button id="btn-salvar" class="btn-salvar" onclick="salvarLivro()">Salvar Livro</button>
+        <button id="btn-cancelar" style="display: none;" onclick="cancelarEdicao()">Cancelar Edição</button>
+    </div>
+
+    <h2>Lista de Livros</h2>
+    <div id="lista-livros"></div>
+
+    <script>
+        const API_URL = '/api/livros'; // Usando caminho relativo, já que front e back estão juntos
+        let editandoId = null; // Variável para controlar se estamos criando ou editando
+
+        async function carregarLivros() {
+            try {
+                const response = await fetch(API_URL);
+                const livros = await response.json();
+                
+                const listaDiv = document.getElementById('lista-livros');
+                listaDiv.innerHTML = ''; 
+
+                if (livros.length === 0) {
+                    listaDiv.innerHTML = '<p>Nenhum livro cadastrado ainda.</p>';
+                    return;
+                }
+
+                livros.forEach(livro => {
+                    // Verifica se tem imagem, se não tiver, usa um placeholder genérico
+                    const imagemSrc = livro.urlImagem ? livro.urlImagem : 'https://via.placeholder.com/80x120?text=Sem+Capa';
+
+                    const card = document.createElement('div');
+                    card.className = 'livro-card';
+                    card.innerHTML = `
+                        <img src="${imagemSrc}" class="livro-capa" alt="Capa do livro">
+                        <div class="livro-info">
+                            <h3>${livro.titulo}</h3>
+                            <p>Autor: ${livro.autor}</p>
+                            <div class="botoes-acao">
+                                <button class="btn-editar" onclick="prepararEdicao(${livro.id}, '${livro.titulo.replace(/'/g, "\\'")}', '${livro.autor.replace(/'/g, "\\'")}', '${livro.urlImagem || ''}')">Editar</button>
+                                <button class="btn-apagar" onclick="apagarLivro(${livro.id})">Apagar</button>
+                            </div>
+                        </div>
+                    `;
+                    listaDiv.appendChild(card);
+                });
+            } catch (error) {
+                console.error("Erro ao carregar livros:", error);
+            }
+        }
+
+        async function salvarLivro() {
+            const titulo = document.getElementById('titulo').value;
+            const autor = document.getElementById('autor').value;
+            const urlImagem = document.getElementById('urlImagem').value;
+
+            if (!titulo || !autor) return alert("Preencha o título e o autor!");
+
+            const metodo = editandoId ? 'PUT' : 'POST';
+            const url = editandoId ? `${API_URL}/${editandoId}` : API_URL;
+
+            try {
+                await fetch(url, {
+                    method: metodo,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ titulo, autor, urlImagem })
+                });
+
+                cancelarEdicao(); // Limpa o formulário e reseta o botão
+                carregarLivros(); // Recarrega a lista
+            } catch (error) {
+                console.error("Erro ao salvar livro:", error);
+            }
+        }
+
+        function prepararEdicao(id, titulo, autor, urlImagem) {
+            // Preenche o form com os dados do livro clicado
+            document.getElementById('titulo').value = titulo;
+            document.getElementById('autor').value = autor;
+            document.getElementById('urlImagem').value = urlImagem;
+            
+            // Muda o estado do formulário para "Modo Edição"
+            editandoId = id;
+            document.getElementById('titulo-form').innerText = "Editando Livro";
+            document.getElementById('btn-salvar').innerText = "Atualizar Livro";
+            document.getElementById('btn-salvar').style.backgroundColor = "#ffc107";
+            document.getElementById('btn-salvar').style.color = "#000";
+            document.getElementById('btn-cancelar').style.display = "block";
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' }); // Sobe a página para o form
+        }
+
+        function cancelarEdicao() {
+            // Limpa tudo e volta pro modo "Adicionar"
+            document.getElementById('titulo').value = '';
+            document.getElementById('autor').value = '';
+            document.getElementById('urlImagem').value = '';
+            
+            editandoId = null;
+            document.getElementById('titulo-form').innerText = "Adicionar Novo Livro";
+            document.getElementById('btn-salvar').innerText = "Salvar Livro";
+            document.getElementById('btn-salvar').style.backgroundColor = "#28a745";
+            document.getElementById('btn-salvar').style.color = "#fff";
+            document.getElementById('btn-cancelar').style.display = "none";
+        }
+
+        async function apagarLivro(id) {
+            if(!confirm("Tem certeza que deseja apagar este livro?")) return;
+            
+            try {
+                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                carregarLivros();
+            } catch (error) {
+                console.error("Erro ao apagar livro:", error);
+            }
+        }
+
+        // Carrega os livros ao abrir a tela
+        carregarLivros();
+    </script>
 </body>
 </html>
