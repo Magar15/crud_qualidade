@@ -1,7 +1,7 @@
 # RTM.md — Matriz de Rastreabilidade de Requisitos
 
 > **Projeto:** Sistema de Cadastro e Gerenciamento de Livros  
-> **Cobertura de testes:** 88% (JaCoCo)  
+> **Cobertura de testes:** 95% (JaCoCo)  
 > **Total de testes:** 23  
 
 ---
@@ -188,7 +188,6 @@ Relatório gerado automaticamente pelo **JaCoCo 0.8.12** após execução de `./
 | `com.example.livros.service` | **100%** |
 | `com.example.livros.controller` | **100%** |
 | `com.example.livros` | 37% |
-| **Total** | **88%** ✅ (mínimo exigido: 80%) |
+| **Total** | **95%** ✅ (mínimo exigido: 80%) |
 
 > Relatório completo disponível em `target/site/jacoco/index.html`
-
