@@ -2,70 +2,135 @@ package com.example.livros.service;
 
 import com.example.livros.model.Livro;
 import com.example.livros.repository.LivroRepository;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import java.util.Optional;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@SpringBootTest
+@Transactional
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class LivroServiceTest {
 
-    @Mock
-    private LivroRepository repository;
-
-    @InjectMocks
+    @Autowired
     private LivroService service;
 
-    private Livro livroMock;
+    @Autowired
+    private LivroRepository repository;
 
     @BeforeEach
-    void setUp() {
-        // 👇 Adicionado um link fictício como 4º parâmetro
-        livroMock = new Livro(1L, "O Senhor dos Anéis", "J.R.R. Tolkien", "http://imagem.com/capa.jpg");
+    void limparBanco() {
+        repository.deleteAll();
     }
 
     @Test
+    @Order(1)
+    @DisplayName("Integração: deve adicionar livro com sucesso")
     void deveAdicionarLivroComSucesso() {
-        when(repository.save(any(Livro.class))).thenReturn(livroMock);
-
-        // 👇 Adicionado null como 4º parâmetro
-        Livro salvo = service.adicionar(new Livro(null, "O Senhor dos Anéis", "J.R.R. Tolkien", null));
+        Livro livro = new Livro(null, "Dom Casmurro", "Machado de Assis", null);
+        Livro salvo = service.adicionar(livro);
 
         assertNotNull(salvo.getId());
-        assertEquals("O Senhor dos Anéis", salvo.getTitulo());
-        verify(repository, times(1)).save(any(Livro.class));
+        assertEquals("Dom Casmurro", salvo.getTitulo());
+        assertEquals("Machado de Assis", salvo.getAutor());
     }
 
     @Test
+    @Order(2)
+    @DisplayName("Integração: deve listar todos os livros")
+    void deveListarTodosOsLivros() {
+        service.adicionar(new Livro(null, "Livro A", "Autor A", null));
+        service.adicionar(new Livro(null, "Livro B", "Autor B", null));
+
+        List<Livro> livros = service.listarTodos();
+        assertEquals(2, livros.size());
+    }
+
+    @Test
+    @Order(3)
+    @DisplayName("Integração: deve editar livro com sucesso")
     void deveEditarLivroComSucesso() {
-        // 👇 Adicionado um link fictício como 4º parâmetro
-        Livro livroAtualizado = new Livro(1L, "O Hobbit", "J.R.R. Tolkien", "http://imagem.com/hobbit.jpg");
-        
-        when(repository.findById(1L)).thenReturn(Optional.of(livroMock));
-        when(repository.save(any(Livro.class))).thenReturn(livroAtualizado);
+        Livro salvo = service.adicionar(new Livro(null, "Titulo Original", "Autor Original", null));
+        Livro novo = new Livro(null, "Titulo Atualizado", "Autor Atualizado", "http://capa.jpg");
 
-        Livro resultado = service.editar(1L, livroAtualizado);
+        Livro resultado = service.editar(salvo.getId(), novo);
 
-        assertEquals("O Hobbit", resultado.getTitulo());
-        verify(repository, times(1)).findById(1L);
-        verify(repository, times(1)).save(any(Livro.class));
+        assertEquals("Titulo Atualizado", resultado.getTitulo());
+        assertEquals("Autor Atualizado", resultado.getAutor());
     }
 
     @Test
+    @Order(4)
+    @DisplayName("Integração: deve apagar livro com sucesso")
     void deveApagarLivroComSucesso() {
-        when(repository.existsById(1L)).thenReturn(true);
-        doNothing().when(repository).deleteById(1L);
+        Livro salvo = service.adicionar(new Livro(null, "Para Apagar", "Autor X", null));
+        assertDoesNotThrow(() -> service.apagar(salvo.getId()));
+        assertEquals(0, repository.count());
+    }
 
-        assertDoesNotThrow(() -> service.apagar(1L));
+    @Test
+    @Order(5)
+    @DisplayName("Caixa Branca: editar livro inexistente lança exceção")
+    void deveLancarExcecaoAoEditarLivroInexistente() {
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> service.editar(999L, new Livro(null, "X", "Y", null)));
+        assertEquals("Livro não encontrado", ex.getMessage());
+    }
 
-        verify(repository, times(1)).existsById(1L);
-        verify(repository, times(1)).deleteById(1L);
+    @Test
+    @Order(6)
+    @DisplayName("Caixa Branca: apagar livro inexistente lança exceção")
+    void deveLancarExcecaoAoApagarLivroInexistente() {
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> service.apagar(999L));
+        assertEquals("Livro não encontrado", ex.getMessage());
+    }
+
+    @Test
+    @Order(7)
+    @DisplayName("Caixa Branca: listar retorna lista vazia quando banco vazio")
+    void deveRetornarListaVaziaQuandoNaoHaLivros() {
+        List<Livro> livros = service.listarTodos();
+        assertNotNull(livros);
+        assertTrue(livros.isEmpty());
+    }
+
+    @ParameterizedTest(name = "[{index}] Adicionar: {0} de {1}")
+    @CsvSource({
+            "O Pequeno Príncipe, Antoine de Saint-Exupéry, http://img.com/1.jpg",
+            "1984, George Orwell, http://img.com/2.jpg",
+            "A Revolução dos Bichos, George Orwell, ''",
+            "Sapiens, Yuval Noah Harari, http://img.com/4.jpg",
+            "O Alquimista, Paulo Coelho, ''"
+    })
+    @Order(8)
+    @DisplayName("Parametrizado: deve adicionar livros com dados variados")
+    void deveAdicionarVariosLivros(String titulo, String autor, String urlImagem) {
+        String url = (urlImagem == null || urlImagem.isBlank()) ? null : urlImagem;
+        Livro salvo = service.adicionar(new Livro(null, titulo, autor, url));
+
+        assertNotNull(salvo.getId());
+        assertEquals(titulo, salvo.getTitulo());
+    }
+
+    @ParameterizedTest(name = "[{index}] Editar titulo para: {1}")
+    @CsvSource({
+            "Titulo A, Titulo Editado A",
+            "Titulo B, Titulo Editado B",
+            "Titulo C, Titulo Editado C"
+    })
+    @Order(9)
+    @DisplayName("Parametrizado: deve editar títulos com dados variados")
+    void deveEditarTituloComDadosDiferentes(String tituloOriginal, String tituloNovo) {
+        Livro salvo = service.adicionar(new Livro(null, tituloOriginal, "Autor", null));
+        Livro resultado = service.editar(salvo.getId(),
+                new Livro(null, tituloNovo, "Autor", null));
+        assertEquals(tituloNovo, resultado.getTitulo());
     }
 }
