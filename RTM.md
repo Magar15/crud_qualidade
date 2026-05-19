@@ -191,3 +191,4 @@ Relatório gerado automaticamente pelo **JaCoCo 0.8.12** após execução de `./
 | **Total** | **88%** ✅ (mínimo exigido: 80%) |
 
 > Relatório completo disponível em `target/site/jacoco/index.html`
+
