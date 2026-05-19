@@ -191,3 +191,41 @@ Relatório gerado automaticamente pelo **JaCoCo 0.8.12** após execução de `./
 | **Total** | **95%** ✅ (mínimo exigido: 80%) |
 
 > Relatório completo disponível em `target/site/jacoco/index.html`
+
+---
+
+## 6. Acesso ao Banco de Dados (H2 Console)
+
+O projeto utiliza o banco de dados **H2 em memória**, acessível via browser durante a execução da aplicação.
+
+### Iniciar a aplicação
+```bash
+./mvnw spring-boot:run
+```
+
+### Acessar o console
+```
+URL: http://localhost:8080/h2-console
+```
+
+### Credenciais de acesso
+
+| Campo | Valor |
+|-------|-------|
+| JDBC URL | `jdbc:h2:mem:livrosdb` |
+| Username | `sa` |
+| Password | *(em branco)* |
+
+### Consultas úteis
+```sql
+-- Listar todos os livros
+SELECT * FROM LIVRO;
+
+-- Contar livros cadastrados
+SELECT COUNT(*) FROM LIVRO;
+
+-- Buscar livro por ID
+SELECT * FROM LIVRO WHERE ID = 1;
+```
+
+> ⚠️ Os dados são **apagados** ao reiniciar a aplicação pois o H2 é um banco em memória.
